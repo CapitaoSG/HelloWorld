@@ -1,4 +1,4 @@
-name: Ping Google on Push
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,12 +6,50 @@ on:
       - main
 
 jobs:
-  ping-google:
+  # 1. Etapa de Build e Teste (CI)
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Executar Ping (ICMP)
-        run: ping -c 4 google.com
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-      # Opcional: Se você quis dizer uma requisição HTTP (Web Ping)
-      - name: Executar Requisição HTTP (Curl)
-        run: curl -I https://google.com
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar Dependências
+        run: npm ci
+
+      - name: Executar Linter / Build
+        run: npm run build --if-present
+
+      - name: Executar Testes
+        run: npm test
+
+  # 2. Etapa de Deploy (CD) - Só executa se o Build/Teste passarem
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Chave SSH para o Servidor
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Adicionar Host aos Conhecidos (Known Hosts)
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Enviar arquivos via Rsync (Deploy)
+        run: |
+          rsync -rltgoDzvO --delete ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/sua-app/
+
+      - name: Reiniciar Serviço no Servidor remoto
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cd /var/www/sua-app && npm install --production && pm2 restart minha-app"
