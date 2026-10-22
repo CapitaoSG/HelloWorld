@@ -1,0 +1,17 @@
+name: Ping Google on Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ping-google:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Executar Ping (ICMP)
+        run: ping -c 4 google.com
+
+      # Opcional: Se você quis dizer uma requisição HTTP (Web Ping)
+      - name: Executar Requisição HTTP (Curl)
+        run: curl -I https://google.com
