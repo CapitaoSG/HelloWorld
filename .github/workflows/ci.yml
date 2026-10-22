@@ -1,4 +1,4 @@
-name: Ping Google on Push
+name: CI/CD Pipeline with Google Ping
 
 on:
   push:
@@ -6,24 +6,19 @@ on:
       - main
 
 jobs:
+  # 1. Etapa de Conectividade e Validação (Ping)
   ping-google:
     runs-on: ubuntu-latest
     steps:
       - name: Executar Ping (ICMP)
         run: ping -c 4 google.com
 
-      # Opcional: Se você quis dizer uma requisição HTTP (Web Ping)
       - name: Executar Requisição HTTP (Curl)
         run: curl -I https://google.com
 
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  # 1. Etapa de Build e Teste (CI)
+  # 2. Etapa de Build e Teste (CI) - Só roda se o ping passar
   build-and-test:
+    needs: ping-google
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -44,7 +39,7 @@ jobs:
       - name: Executar Testes
         run: npm test
 
-  # 2. Etapa de Deploy (CD) - Só executa se o Build/Teste passarem
+  # 3. Etapa de Deploy (CD) - Só roda se o Build/Teste passarem
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
